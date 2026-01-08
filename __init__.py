@@ -7,6 +7,29 @@ import sqlite3
                                                                                                                                        
 app = Flask(__name__)
 
+@app.route("/api/commits/")
+def commits_api():
+    url = "https://api.github.com/repos/OpenRSI/5MCSI_Metriques/commits"
+    response = urlopen(url)
+    raw = response.read()
+    commits = json.loads(raw.decode("utf-8"))
+
+    minutes = {}
+
+    for commit in commits:
+        date = commit.get("commit", {}).get("author", {}).get("date")
+        if date:
+            minute = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ").minute
+            minutes[minute] = minutes.get(minute, 0) + 1
+
+    results = []
+    for minute in sorted(minutes):
+        results.append({
+            "minute": str(minute),
+            "count": minutes[minute]
+        })
+
+    return jsonify(results=results)
 @app.route('/commits/')
 def commits_page():
     return render_template('commits.html')
