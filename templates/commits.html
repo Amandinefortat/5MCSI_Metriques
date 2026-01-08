@@ -1,148 +1,135 @@
-<!DOCTYPE html>
 <html>
-<head>
-    <title>Commits/minute - fortat.alwaysdata.net</title>
-    <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <head>
+    <meta charset="UTF-8">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-            min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: white;
-        }
-        .header {
-            text-align: center;
-            margin: 40px 0 30px;
-        }
-        h1 {
-            font-size: 2.8em;
-            margin-bottom: 10px;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-        .subtitle {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-        #chart_div {
-            width: 98vw;
-            max-width: 1400px;
-            height: 700px;
-            background: rgba(255,255,255,0.95);
-            border-radius: 24px;
-            padding: 30px;
-            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
-            margin-bottom: 30px;
-        }
-        .stats {
-            display: flex;
-            gap: 40px;
-            justify-content: center;
-            flex-wrap: wrap;
-            font-size: 1.3em;
-        }
-        .stat {
-            background: rgba(255,255,255,0.2);
-            padding: 20px 30px;
-            border-radius: 20px;
-            backdrop-filter: blur(15px);
-            text-align: center;
-            min-width: 140px;
-        }
-        .stat strong { display: block; font-size: 2em; color: #fff; }
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 400px;
-            font-size: 1.5em;
-        }
-        @media (max-width: 768px) {
-            h1 { font-size: 2em; }
-            .stats { gap: 20px; }
-            .stat { min-width: 120px; font-size: 1.1em; }
-        }
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      #controls {
+        margin-bottom: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      input, button {
+        padding: 8px 12px;
+        margin: 5px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+      }
+      button {
+        background-color: #4285f4;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #357ae8;
+      }
+      #top_x_div {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      #status {
+        margin-top: 10px;
+        color: #666;
+      }
     </style>
-</head>
-<body>
-    <div class="header">
-        <h1>📊 Commits par Minute</h1>
-        <p class="subtitle">OpenRSI/5MCSI_Metriques - Analyse en temps réel</p>
-    </div>
-
-    <div id="chart_div">
-        <div class="loading">🔄 Chargement des commits GitHub...</div>
-    </div>
-
-    <div class="stats" id="stats"></div>
-
-    <script>
-        google.charts.load('current', {packages: ['corechart']});
-        google.charts.setOnLoadCallback(drawChart);
-
-        function drawChart() {
-            fetch('/api/commits/')
-                .then(r => r.json())
-                .then(data => {
-                    let total = 0, maxPeak = 0, activeMins = 0;
-                    
-                    let chartData = [['Minute', 'Commits']];
-                    data.forEach(p => {
-                        chartData.push([p.minute, p.commits]);
-                        total += p.commits;
-                        if (p.commits > 0) activeMins++;
-                        if (p.commits > maxPeak) maxPeak = p.commits;
-                    });
-
-                    let table = google.visualization.arrayToDataTable(chartData);
-
-                    let options = {
-                        title: `Répartition commits (${total} total sur 100 derniers)`,
-                        titleTextStyle: {fontSize: 24, bold: true, color: '#1e3a8a'},
-                        legend: {position: 'none'},
-                        hAxis: {
-                            title: 'Minute du jour (0=00:00, 1439=23:59)',
-                            slantedText: true,
-                            slantedTextAngle: 45,
-                            textStyle: {fontSize: 11}
-                        },
-                        vAxis: {title: 'Commits', minValue: 0},
-                        colors: ['#3b82f6', '#1e40af'],
-                        backgroundColor: 'transparent',
-                        chartArea: {width: '90%', height: '80%'},
-                        histogram: {bucketSize: 30}  // Groupes 30min
-                    };
-
-                    let chart = new google.visualization.Histogram(
-                        document.getElementById('chart_div')
-                    );
-                    chart.draw(table, options);
-
-                    // Stats en live
-                    document.getElementById('stats').innerHTML = `
-                        <div class="stat">
-                            <strong>${total}</strong>
-                            Total commits
-                        </div>
-                        <div class="stat">
-                            <strong>${maxPeak}</strong>
-                            Pic max/min
-                        </div>
-                        <div class="stat">
-                            <strong>${activeMins}</strong>
-                            Min actives
-                        </div>
-                    `;
-                })
-                .catch(e => {
-                    document.getElementById('chart_div').innerHTML = 
-                        `<div class="loading">❌ Erreur: ${e}</div>`;
-                });
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['bar']});
+      
+      let commitData = [];
+      
+      async function fetchGitHubCommits() {
+        const username = 'Benoit-Gauvin';
+        const apiUrl = 'https://api.github.com/repos/OpenRSI/5MCSI_Metriques/commits';
+        
+        document.getElementById('status').textContent = 'Chargement des commits...';
+        
+        try {
+          const response = await fetch(apiUrl);
+          
+          if (!response.ok) {
+            throw new Error('Dépôt non trouvé ou API GitHub inaccessible');
+          }
+          
+          const commits = await response.json();
+          
+          // Grouper les commits par minute
+          const commitsByMinute = {};
+          
+          for (const commit of commits) {
+            // Les données sont dans commit.commit.author.date selon la structure de l'API GitHub
+            const dateString = commit.commit.author.date; // Format: "2024-02-11T11:57:27Z"
+            
+            if (dateString) {
+              // Extraire directement les minutes de la chaîne (position 14-15)
+              const minute = parseInt(dateString.substring(14, 16));
+              commitsByMinute[minute] = (commitsByMinute[minute] || 0) + 1;
+            }
+          }
+          
+          console.log('Commits par minute:', commitsByMinute);
+          console.log('Total commits traités:', commits.length);
+          
+          // Préparer les données pour le graphique
+          commitData = [['Minute', 'Nombre de commits']];
+          for (let i = 0; i < 60; i++) {
+            commitData.push([`Min ${i}`, commitsByMinute[i] || 0]);
+          }
+          
+          document.getElementById('status').textContent = `${commits.length} commits chargés avec succès`;
+          drawChart();
+          
+        } catch (error) {
+          document.getElementById('status').textContent = 'Erreur: ' + error.message;
+          console.error('Erreur:', error);
         }
+      }
+      
+      function drawChart() {
+        if (commitData.length === 0) {
+          alert('Aucune donnée à afficher. Veuillez d\'abord charger les commits.');
+          return;
+        }
+        
+        var data = google.visualization.arrayToDataTable(commitData);
+        
+        var options = {
+          width: 1000,
+          height: 600,
+          legend: { position: 'none' },
+          chart: {
+            title: 'Distribution des commits par minute',
+            subtitle: 'Nombre de commits effectués à chaque minute de l\'heure'
+          },
+          axes: {
+            x: {
+              0: { side: 'bottom', label: 'Minute de l\'heure' }
+            }
+          },
+          bar: { groupWidth: "95%" },
+          colors: ['#4285f4']
+        };
+        
+        var chart = new google.charts.Bar(document.getElementById('top_x_div'));
+        chart.draw(data, google.charts.Bar.convertOptions(options));
+      }
     </script>
-</body>
+  </head>
+  <body>
+    <div id="controls">
+      <h2>Analyse des commits GitHub</h2>
+      <p><strong>Utilisateur:</strong> Benoit-Gauvin</p>
+      <p><strong>Dépôt:</strong> OpenRSI/5MCSI_Metriques</p>
+      <button onclick="fetchGitHubCommits()">Charger les commits</button>
+      <div id="status"></div>
+    </div>
+    <div id="top_x_div" style="width: 1000px; height: 600px;"></div>
+  </body>
 </html>
