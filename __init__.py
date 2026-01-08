@@ -7,6 +7,9 @@ import sqlite3
                                                                                                                                        
 app = Flask(__name__)
 
+@app.route('/commits/')
+def commits_page():
+    return render_template('commits.html')
 @app.route("/histogramme/")
 def monhistogramme():
     return render_template("graphique2.html")
