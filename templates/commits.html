@@ -14,38 +14,56 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            color: white;
         }
         .header {
             text-align: center;
-            color: white;
             margin-bottom: 30px;
         }
-        h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .subtitle { font-size: 1.1em; opacity: 0.9; }
+        h1 { 
+            font-size: 2.5em; 
+            margin-bottom: 10px;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .subtitle { 
+            font-size: 1.1em; 
+            opacity: 0.9; 
+        }
         #chart_div {
             width: 95vw;
             max-width: 1200px;
-            height: 600px;
+            height: 650px;
             background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+            padding: 30px;
         }
-        .loading {
-            color: white;
-            font-size: 1.2em;
-            text-align: center;
-            margin: 50px 0;
+        .stats {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+        .stat {
+            background: rgba(255,255,255,0.2);
+            padding: 15px 25px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📊 Commits par Minute</h1>
-        <p class="subtitle">Activité commit du repo OpenRSI/5MCSI_Metriques (100 derniers)</p>
+        <h1>📈 Commits par Minute</h1>
+        <p class="subtitle">Analyse de tes commits depuis paste.txt (Amandinefortat/5MCSIMetriques)</p>
     </div>
     
-    <div id="chart_div"></div>
+    <div id="chart_div">
+        <div style="text-align:center; padding:50px; font-size:24px;">Chargement...</div>
+    </div>
+    
+    <div class="stats" id="stats"></div>
 
     <script>
         google.charts.load('current', {'packages':['corechart']});
@@ -55,47 +73,63 @@
             fetch('/api/commits/')
                 .then(response => response.json())
                 .then(data => {
-                    var chartData = [['Minute du jour', 'Nombre de commits']];
+                    let totalCommits = 0;
+                    let maxCommits = 0;
                     
+                    var chartData = [['Minute', 'Commits']];
                     data.forEach(point => {
                         chartData.push([point.minute, point.commits]);
+                        totalCommits += point.commits;
+                        if (point.commits > maxCommits) maxCommits = point.commits;
                     });
 
                     var dataTable = google.visualization.arrayToDataTable(chartData);
 
                     var options = {
-                        title: 'Distribution des commits par minute (24h)',
-                        titleTextStyle: {
-                            fontSize: 20,
-                            bold: true,
-                            color: '#1d3557'
-                        },
+                        title: `Distribution des commits (${totalCommits} total)`,
+                        titleTextStyle: { fontSize: 22, bold: true, color: '#1d3557' },
                         legend: { position: 'none' },
                         hAxis: {
-                            title: 'Minute du jour (0=00:00, 1439=23:59)',
+                            title: 'Minute du jour (0=00:00 → 1439=23:59)',
                             minValue: 0,
-                            textStyle: { fontSize: 12 }
+                            slantedText: true,
+                            slantedTextAngle: 45
                         },
                         vAxis: {
                             title: 'Nombre de commits',
                             minValue: 0,
-                            gridlines: { color: '#e0e0e0' }
+                            maxValue: Math.max(maxCommits * 1.2, 5)
                         },
-                        colors: ['#457b9d', '#1d3557'],
+                        colors: ['#457b9d'],
                         backgroundColor: 'transparent',
-                        chartArea: { width: '85%', height: '80%' },
-                        histogram: {
-                            bucketSize: 60,  // Groupes de 60 minutes (1h)
-                            lastBucketPercentile: 100
-                        }
+                        chartArea: { width: '88%', height: '75%' },
+                        histogram: { bucketSize: 30 }  // Groupes de 30 minutes
                     };
 
-                    var chart = new google.visualization.Histogram(document.getElementById('chart_div'));
+                    var chart = new google.visualization.Histogram(
+                        document.getElementById('chart_div')
+                    );
                     chart.draw(dataTable, options);
+
+                    // Stats dynamiques
+                    document.getElementById('stats').innerHTML = `
+                        <div class="stat">
+                            <strong>${totalCommits}</strong><br>
+                            Total commits
+                        </div>
+                        <div class="stat">
+                            <strong>${maxCommits}</strong><br>
+                            Pic max/minute
+                        </div>
+                        <div class="stat">
+                            <strong>${data.filter(p => p.commits > 0).length}</strong><br>
+                            Minutes actives
+                        </div>
+                    `;
                 })
                 .catch(error => {
                     document.getElementById('chart_div').innerHTML = 
-                        '<div class="loading">❌ Erreur: ' + error + '</div>';
+                        '<div style="text-align:center; padding:60px; color:#666;">❌ Erreur: ' + error + '</div>';
                 });
         }
     </script>
